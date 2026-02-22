@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>KALA BAZAR | Admin Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { background: #050505; color: #eee; font-family: sans-serif; }
+        .admin-card { background: #111; border: 1px solid #444; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .btn-approve { background: #28a745; color: white; padding: 5px 10px; border-radius: 4px; }
+        .btn-reject { background: #dc3545; color: white; padding: 5px 10px; border-radius: 4px; }
+    </style>
+</head>
+<body class="p-4">
+    <h1 class="text-2xl font-bold text-yellow-500 mb-6">KALA BAZAR Admin Panel</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section>
+            <h2 class="text-xl mb-4 border-b border-yellow-700">All Users</h2>
+            <div id="userList"></div>
+        </section>
+
+        <section>
+            <h2 class="text-xl mb-4 border-b border-yellow-700">Pending Deposits</h2>
+            <div id="depositRequests"></div>
+        </section>
+    </div>
+
+<script>
+// Firebase Initialization (Same as above)
+const firebaseConfig = {
+  apiKey: "*****",
+  authDomain: "mohan-bkl.firebaseapp.com",
+  projectId: "mohan-bkl",
+  storageBucket: "mohan-bkl.firebasestorage.app",
+  appId: "1:481570546444:web:670eb08c7bd1e499c79f29"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Fetch Users
+db.collection('users').onSnapshot(snap => {
+    const list = document.getElementById('userList');
+    list.innerHTML = '';
+    snap.forEach(doc => {
+        const u = doc.data();
+        list.innerHTML += `
+            <div class="admin-card">
+                <p><strong>Phone:</strong> ${u.phone}</p>
+                <p><strong>Balance:</strong> ₹${u.balance}</p>
+                <input type="number" id="bal-${doc.id}" placeholder="New Balance" class="bg-black border border-gray-600 p-1 text-sm mt-2">
+                <button onclick="updateBalance('${doc.id}')" class="bg-yellow-600 text-black text-xs px-2 py-1">Update</button>
+            </div>
+        `;
+    });
+});
+
+// Fetch Deposits
+db.collection('deposits').where('status', '==', 'pending').onSnapshot(snap => {
+    const list = document.getElementById('depositRequests');
+    list.innerHTML = '';
+    snap.forEach(doc => {
+        const d = doc.data();
+        list.innerHTML += `
+            <div class="admin-card">
+                <p>User ID: ${d.userId}</p>
+                <p>Amount: ₹${d.amount}</p>
+                <img src="${d.proof}" class="w-32 h-32 object-cover my-2 cursor-pointer" onclick="window.open('${d.proof}')">
+                <div class="flex gap-2">
+                    <button class="btn-approve" onclick="manageDeposit('${doc.id}', '${d.userId}', ${d.amount}, 'approved')">Approve</button>
+                    <button class="btn-reject" onclick="manageDeposit('${doc.id}', null, 0, 'rejected')">Reject</button>
+                </div>
+            </div>
+        `;
+    });
+});
+
+async function updateBalance(uid) {
+    const newBal = document.getElementById(`bal-${uid}`).value;
+    await db.collection('users').doc(uid).update({ balance: parseFloat(newBal) });
+    alert("Balance updated!");
+}
+
+async function manageDeposit(did, uid, amt, status) {
+    if(status === 'approved') {
+        const userRef = db.collection('users').doc(uid);
+        const userDoc = await userRef.get();
+        const currentBal = userDoc.data().balance || 0;
+        await userRef.update({ balance: currentBal + parseFloat(amt) });
+    }
+    await db.collection('deposits').doc(did).update({ status: status });
+    alert("Request " + status);
+}
+</script>
+</body>
+</html>
