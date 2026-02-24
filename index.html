@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultra Admin Pro - Real Database Control</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        body {
+            background: #050505;
+            color: #fff;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+        }
+
+        /* Button Animations */
+        .btn-animate {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.1s;
+        }
+        
+        .btn-animate:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-animate::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+        
+        .btn-animate:active::after {
+            width: 200px;
+            height: 200px;
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Glass Cards */
+        .glass-card {
+            background: linear-gradient(145deg, #111 0%, #0a0a0a 100%);
+            border: 1px solid #222;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10,10,10,0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            position: relative;
+        }
+
+        .nav-item.active {
+            color: #00ff88;
+            transform: translateY(-2px);
+        }
+
+        .nav-item.active i {
+            transform: scale(1.1);
+        }
+
+        .nav-item i {
+            font-size: 22px;
+            transition: transform 0.2s;
+        }
+
+        /* Undo Toast */
+        .undo-toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #222;
+            border: 1px solid #444;
+            padding: 12px 24px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        
+        .undo-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Editable Highlight */
+        [contenteditable="true"] {
+            border: 2px dashed #00ff88;
+            padding: 4px;
+            border-radius: 4px;
+            background: rgba(0,255,136,0.1);
+            outline: none;
+        }
+
+        /* Long Press Indicator */
+        .long-press-indicator {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: #00ff88;
+            width: 0;
+            transition: width 0.8s linear;
+        }
+
+        .pressing .long-press-indicator {
+            width: 100%;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Status Badges */
+        .badge-pending { background: #ffaa00; color: #000; }
+        .badge-approved { background: #00ff88; color: #000; }
+        .badge-rejected { background: #ff4444; color: #fff; }
+
+        /* Section */
+        .section { display: none; }
+        .section.active { display: block; animation: slideUp 0.3s; }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Website Preview Container */
+        .website-preview {
+            background: #fff;
+            color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            min-height: 600px;
+            position: relative;
+        }
+
+        .edit-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 3px solid #00ff88;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .editing .edit-overlay {
+            opacity: 1;
+        }
+
+        /* Hide Scrollbar */
+        ::-webkit-scrollbar { width: 0; height: 0; }
+    </style>
+</head>
+<body>
+
+    <!-- Login -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-400 to-yellow-400 flex items-center justify-center mx-auto mb-4 btn-animate" onclick="createRipple(event)">
+                    <i class="fas fa-database text-3xl text-black"></i>
+                </div>
+                <h1 class="text-2xl font-black">ULTRA <span class="text-green-400">ADMIN PRO</span></h1>
+                <p class="text-gray-500 text-sm">Real Database Control</p>
+            </div>
+
+            <div class="space-y-4">
+                <input type="text" id="admin-id" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-green-400" placeholder="Admin ID" value="SQL1234">
+                <input type="password" id="admin-pass" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-green-400" placeholder="Password" value="SQL1234">
+                
+                <button onclick="adminLogin(event)" class="w-full bg-green-400 text-black font-bold py-4 rounded-xl btn-animate relative overflow-hidden">
+                    <i class="fas fa-sign-in-alt mr-2"></i> ACCESS DATABASE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        
+        <!-- Header -->
+        <header class="sticky top-0 bg-black/95 backdrop-blur-xl border-b border-gray-800 p-4 z-50">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-yellow-400 flex items-center justify-center btn-animate" onclick="createRipple(event)">
+                        <i class="fas fa-database text-black"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-black text-lg" id="page-title">Dashboard</h1>
+                        <p class="text-xs text-gray-500" id="connection-status">
+                            <span class="inline-block w-2 h-2 rounded-full bg-green-400 mr-1 animate-pulse"></span>
+                            Live Connection
+                        </p>
+                    </div>
+                </div>
+                <button onclick="showNotifications(event)" class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center relative btn-animate">
+                    <i class="fas fa-bell text-gray-400"></i>
+                    <span id="notif-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-bold hidden">0</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-4">
+            
+            <!-- HOME SECTION -->
+            <section id="sec-home" class="section active">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="glass-card p-4 btn-animate" onclick="openDatabase(event)">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-users text-2xl text-blue-400"></i>
+                            <span class="text-xs text-gray-500">Total</span>
+                        </div>
+                        <p class="text-2xl font-black" id="stat-users">--</p>
+                        <p class="text-xs text-gray-500">Registered Users</p>
+                    </div>
+                    
+                    <div class="glass-card p-4 btn-animate" onclick="showSection('payments', event)">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-wallet text-2xl text-green-400"></i>
+                            <span class="text-xs text-gray-500">Live</span>
+                        </div>
+                        <p class="text-2xl font-black text-green-400" id="stat-balance">₹--</p>
+                        <p class="text-xs text-gray-500">Total Balance</p>
+                    </div>
+                    
+                    <div class="glass-card p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-briefcase text-2xl text-yellow-400"></i>
+                            <span class="text-xs text-gray-500">Active</span>
+                        </div>
+                        <p class="text-2xl font-black text-yellow-400" id="stat-invested">₹--</p>
+                        <p class="text-xs text-gray-500">Invested</p>
+                    </div>
+                    
+                    <div class="glass-card p-4 btn-animate" onclick="showSection('payments', event)">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-clock text-2xl text-orange-400"></i>
+                            <span class="text-xs text-gray-500">Pending</span>
+                        </div>
+                        <p class="text-2xl font-black text-orange-400" id="stat-pending">--</p>
+                        <p class="text-xs text-gray-500">Actions Required</p>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <h3 class="font-bold text-lg mb-3">Quick Actions</h3>
+                <div class="space-y-3 mb-6">
+                    <button onclick="openDatabaseModal(event)" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl btn-animate flex items-center justify-center gap-2">
+                        <i class="fas fa-database"></i>
+                        OPEN DATABASE MANAGER
+                        <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                    
+                    <button onclick="openInvestmentModal(event)" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold py-4 rounded-xl btn-animate flex items-center justify-center gap-2">
+                        <i class="fas fa-rocket"></i>
+                        LAUNCH NEW INVESTMENT CARD
+                    </button>
+                    
+                    <button onclick="openWebsiteEditor(event)" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl btn-animate flex items-center justify-center gap-2">
+                        <i class="fas fa-globe"></i>
+                        EDIT PUBLIC WEBSITE
+                    </button>
+                </div>
+
+                <!-- Recent Activity -->
+                <h3 class="font-bold text-lg mb-3">Live Activity</h3>
+                <div id="activity-list" class="space-y-3">
+                    <div class="glass-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold">Connecting to database...</p>
+                            <p class="text-xs text-gray-500">Please wait</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DATABASE SECTION -->
+            <section id="sec-database" class="section">
+                <div class="flex gap-2 overflow-x-auto pb-4 mb-4">
+                    <button onclick="filterDb('all', event)" class="db-filter px-4 py-2 bg-green-400 text-black rounded-full text-sm font-bold whitespace-nowrap btn-animate active" data-filter="all">All Data</button>
+                    <button onclick="filterDb('users', event)" class="db-filter px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-bold whitespace-nowrap btn-animate" data-filter="users">Users</button>
+                    <button onclick="filterDb('payments', event)" class="db-filter px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-bold whitespace-nowrap btn-animate" data-filter="payments">Payments</button>
+                    <button onclick="filterDb('investments', event)" class="db-filter px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-bold whitespace-nowrap btn-animate" data-filter="investments">Investments</button>
+                    <button onclick="filterDb('crypto', event)" class="db-filter px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-bold whitespace-nowrap btn-animate" data-filter="crypto">Crypto/UPI</button>
+                </div>
+
+                <div id="db-content" class="space-y-3">
+                    <!-- Dynamic Content -->
+                </div>
+            </section>
+
+            <!-- PAYMENTS SECTION -->
+            <section id="sec-payments" class="section">
+                <div class="flex gap-2 mb-4">
+                    <button onclick="filterPayments('pending', event)" class="pay-filter flex-1 bg-orange-500 text-black font-bold py-3 rounded-xl btn-animate active" data-filter="pending">
+                        <i class="fas fa-clock mr-2"></i>Pending
+                    </button>
+                    <button onclick="filterPayments('history', event)" class="pay-filter flex-1 bg-gray-800 text-white font-bold py-3 rounded-xl btn-animate" data-filter="history">
+                        <i class="fas fa-history mr-2"></i>History
+                    </button>
+                </div>
+
+                <div class="flex gap-2 mb-4 overflow-x-auto">
+                    <button onclick="filterPaymentType('all', event)" class="type-filter px-4 py-2 bg-green-400 text-black rounded-full text-sm font-bold btn-animate active" data-type="all">All</button>
+                    <button onclick="filterPaymentType('deposit', event)" class="type-filter px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-bold btn-animate" data-type="deposit">Deposits</button>
+                    <button onclick="filterPaymentType('withdraw', event)" class="type-filter px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-bold btn-animate" data-type="withdraw">Withdrawals</button>
+                </div>
+
+                <div id="payments-list" class="space-y-3">
+                    <!-- Dynamic -->
+                </div>
+            </section>
+
+            <!-- WEBSITE EDITOR SECTION -->
+            <section id="sec-website" class="section">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-lg">Live Website Editor</h3>
+                    <div class="flex gap-2">
+                        <button onclick="toggleEditMode(event)" id="edit-mode-btn" class="px-4 py-2 bg-green-400 text-black rounded-lg font-bold text-sm btn-animate">
+                            <i class="fas fa-edit mr-2"></i>Edit
+                        </button>
+                        <button onclick="saveWebsiteChanges(event)" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold text-sm btn-animate">
+                            <i class="fas fa-save mr-2"></i>Save
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-yellow-400">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Long press on any element to edit. Changes reflect immediately on public site.
+                    </p>
+                </div>
+
+                <div id="website-preview" class="website-preview relative">
+                    <div class="edit-overlay"></div>
+                    <iframe id="site-frame" class="w-full h-[600px] border-0"></iframe>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="showSection('home', event)">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" onclick="showSection('database', event)">
+                <i class="fas fa-database"></i>
+                <span>Database</span>
+            </button>
+            <button class="nav-item" onclick="showSection('payments', event)">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Payments</span>
+                <span id="nav-pending-badge" class="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center hidden">0</span>
+            </button>
+            <button class="nav-item" onclick="showSection('website', event)">
+                <i class="fas fa-globe"></i>
+                <span>Website</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Database Manager Modal -->
+    <div id="modal-database" class="modal">
+        <div class="min-h-screen bg-black p-4">
+            <div class="flex items-center justify-between mb-6 sticky top-0 bg-black/95 backdrop-blur-xl p-4 -mx-4 border-b border-gray-800">
+                <h2 class="text-2xl font-black">Database <span class="text-green-400">Manager</span></h2>
+                <button onclick="closeModal('database')" class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center btn-animate">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div onclick="loadDbSection('users')" class="glass-card p-4 text-center btn-animate cursor-pointer">
+                    <i class="fas fa-users text-3xl text-blue-400 mb-2"></i>
+                    <p class="font-bold text-sm">All Users</p>
+                    <p class="text-xs text-gray-500" id="count-users">0 records</p>
+                </div>
+                <div onclick="loadDbSection('payments')" class="glass-card p-4 text-center btn-animate cursor-pointer">
+                    <i class="fas fa-money-bill-wave text-3xl text-green-400 mb-2"></i>
+                    <p class="font-bold text-sm">Payments</p>
+                    <p class="text-xs text-gray-500" id="count-payments">0 records</p>
+                </div>
+                <div onclick="loadDbSection('investments')" class="glass-card p-4 text-center btn-animate cursor-pointer">
+                    <i class="fas fa-briefcase text-3xl text-yellow-400 mb-2"></i>
+                    <p class="font-bold text-sm">Investments</p>
+                    <p class="text-xs text-gray-500" id="count-investments">0 records</p>
+                </div>
+                <div onclick="loadDbSection('crypto')" class="glass-card p-4 text-center btn-animate cursor-pointer">
+                    <i class="fas fa-coins text-3xl text-purple-400 mb-2"></i>
+                    <p class="font-bold text-sm">Crypto/UPI</p>
+                    <p class="text-xs text-gray-500">Manage</p>
+                </div>
+            </div>
+
+            <div id="db-detail-view" class="space-y-3">
+                <!-- Dynamic -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Investment Launch Modal -->
+    <div id="modal-investment" class="modal">
+        <div class="min-h-screen bg-black p-4">
+            <div class="flex items-center justify-between mb-6 sticky top-0 bg-black/95 backdrop-blur-xl p-4 -mx-4 border-b border-gray-800">
+                <h2 class="text-2xl font-black">Launch <span class="text-yellow-400">Investment</span></h2>
+                <button onclick="closeModal('investment')" class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center btn-animate">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold mb-2 block">Card Image</label>
+                    <div class="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center" onclick="document.getElementById('inv-image').click()">
+                        <img id="inv-preview" src="" class="w-full h-48 object-cover rounded-lg hidden mb-4">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-600 mb-2"></i>
+                        <p class="text-sm text-gray-500">Tap to upload image</p>
+                        <input type="file" id="inv-image" class="hidden" accept="image/*" onchange="previewImage(this)">
+                    </div>
+                </div>
+
+                <input type="text" id="inv-name" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400" placeholder="Plan Name (e.g., Diamond Plan)">
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="inv-min" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400" placeholder="Min Amount (₹)">
+                    <input type="number" id="inv-max" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400" placeholder="Max Amount (₹)">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="inv-return" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400" placeholder="Return %">
+                    <input type="number" id="inv-duration" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400" placeholder="Duration (Days)">
+                </div>
+
+                <select id="inv-type" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400">
+                    <option value="daily">Daily Return</option>
+                    <option value="monthly">Monthly Return</option>
+                    <option value="yearly">Yearly Return</option>
+                    <option value="one-time">One Time</option>
+                </select>
+
+                <textarea id="inv-desc" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-yellow-400 h-24 resize-none" placeholder="Plan Description"></textarea>
+
+                <button onclick="launchInvestment(event)" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold py-4 rounded-xl btn-animate mt-4">
+                    <i class="fas fa-rocket mr-2"></i>LAUNCH PLAN NOW
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Edit Modal -->
+    <div id="modal-user" class="modal">
+        <div class="min-h-screen bg-black p-4">
+            <div class="flex items-center justify-between mb-6 sticky top-0 bg-black/95 backdrop-blur-xl p-4 -mx-4 border-b border-gray-800">
+                <h2 class="text-2xl font-black">Edit <span class="text-blue-400">User</span></h2>
+                <button onclick="closeModal('user')" class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center btn-animate">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="text-center mb-6">
+                <img id="edit-user-img" src="" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-blue-400">
+                <h3 id="edit-user-name" class="font-bold text-xl"></h3>
+                <p id="edit-user-phone" class="text-gray-500"></p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-bold mb-2 block">Balance (₹)</label>
+                        <input type="number" id="edit-balance" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-blue-400 text-lg font-bold text-green-400">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-bold mb-2 block">Invested (₹)</label>
+                        <input type="number" id="edit-invested" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-blue-400 text-lg font-bold text-yellow-400">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold mb-2 block">UPI ID</label>
+                    <input type="text" id="edit-upi" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-blue-400 font-mono">
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold mb-2 block">Crypto Address</label>
+                    <input type="text" id="edit-crypto" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-blue-400 font-mono text-sm">
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold mb-2 block">Role</label>
+                    <select id="edit-role" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-blue-400">
+                        <option value="user">User</option>
+                        <option value="vip">VIP</option>
+                        <option value="admin">Admin</option>
+                        <option value="blocked">Blocked</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button onclick="saveUserEdit(event)" class="flex-1 bg-blue-500 text-white font-bold py-4 rounded-xl btn-animate">
+                        <i class="fas fa-save mr-2"></i>Save
+                    </button>
+                    <button onclick="deleteUser(event)" class="flex-1 bg-red-500 text-white font-bold py-4 rounded-xl btn-animate">
+                        <i class="fas fa-trash mr-2"></i>Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Undo Toast -->
+    <div id="undo-toast" class="undo-toast">
+        <span id="undo-message">Item deleted</span>
+        <button onclick="undoAction()" class="px-4 py-2 bg-green-400 text-black rounded-full font-bold text-sm btn-animate">
+            UNDO
+        </button>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-800 border border-gray-600 px-6 py-3 rounded-full shadow-2xl z-[3000] hidden flex items-center gap-3">
+        <i id="toast-icon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toast-message" class="font-bold">Success</span>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvObxADcAior6R_or9O6UmWsFT8do1GkI",
+            authDomain: "sqladmin-ff04d.firebaseapp.com",
+            projectId: "sqladmin-ff04d",
+            storageBucket: "sqladmin-ff04d.firebasestorage.app",
+            messagingSenderId: "539086978850",
+            appId: "1:539086978850:web:261e6a0cf3c9a2aa29ef7b"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Global State
+        let currentAdmin = null;
+        let currentEditId = null;
+        let lastDeletedDoc = null;
+        let lastDeletedCollection = null;
+        let editMode = false;
+        let realtimeListeners = [];
+
+        // Button Ripple Effect
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const circle = document.createElement("span");
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+            
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - button.getBoundingClientRect().left - radius}px`;
+            circle.style.top = `${event.clientY - button.getBoundingClientRect().top - radius}px`;
+            circle.classList.add("ripple");
+            
+            const existingRipple = button.querySelector(".ripple");
+            if (existingRipple) {
+                existingRipple.remove();
+            }
+            
+            button.appendChild(circle);
+        }
+
+        // Add ripple to all buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-animate')) {
+                createRipple(e);
+            }
+        });
+
+        // Login
+        function adminLogin(e) {
+            createRipple(e);
+            const id = document.getElementById('admin-id').value;
+            const pass = document.getElementById('admin-pass').value;
+
+            if (id === 'SQL1234' && pass === 'SQL1234') {
+                currentAdmin = id;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                
+                // Save session
+                localStorage.setItem('adminProSession', JSON.stringify({
+                    id: id,
+                    time: Date.now()
+                }));
+                
+                initializeApp();
+                showToast('Database Connected Successfully', 'success');
+            } else {
+                showToast('Invalid Credentials!', 'error');
+            }
+        }
+
+        // Check existing session
+        const savedSession = localStorage.getItem('adminProSession');
+        if (savedSession) {
+            const session = JSON.parse(savedSession);
+            if (Date.now() - session.time < 24 * 60 * 60 * 1000) {
+                currentAdmin = session.id;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                initializeApp();
+            }
+        }
+
+        // Initialize App with Real-time Listeners
+        function initializeApp() {
+            setupRealtimeListeners();
+            loadDashboardStats();
+        }
+
+        // Real-time Listeners
+        function setupRealtimeListeners() {
+            // Clear existing listeners
+            realtimeListeners.forEach(unsub => unsub());
+            realtimeListeners = [];
+
+            // Users listener
+            const usersUnsub = db.collection('users').onSnapshot(snapshot => {
+                document.getElementById('stat-users').textContent = snapshot.size;
+                document.getElementById('count-users').textContent = snapshot.size + ' records';
+                
+                let totalBalance = 0;
+                let totalInvested = 0;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    totalBalance += data.balance || 0;
+                    totalInvested += data.totalInvested || 0;
+                });
+                
+                document.getElementById('stat-balance').textContent = '₹' + totalBalance.toLocaleString();
+                document.getElementById('stat-invested').textContent = '₹' + totalInvested.toLocaleString();
+            });
+            realtimeListeners.push(usersUnsub);
+
+            // Pending payments listener
+            const pendingUnsub = db.collection('transactions')
+                .where('status', '==', 'pending')
+                .onSnapshot(snapshot => {
+                    const count = snapshot.size;
+                    document.getElementById('stat-pending').textContent = count;
+                    
+                    const badge = document.getElementById('notif-badge');
+                    const navBadge = document.getElementById('nav-pending-badge');
+                    
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.classList.remove('hidden');
+                        navBadge.textContent = count;
+                        navBadge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                        navBadge.classList.add('hidden');
+                    }
+                });
+            realtimeListeners.push(pendingUnsub);
+
+            // All payments count
+            const paymentsUnsub = db.collection('transactions').onSnapshot(snapshot => {
+                document.getElementById('count-payments').textContent = snapshot.size + ' records';
+            });
+            realtimeListeners.push(paymentsUnsub);
+
+            // Investments count
+            const investUnsub = db.collection('plans').onSnapshot(snapshot => {
+                document.getElementById('count-investments').textContent = snapshot.size + ' records';
+            });
+            realtimeListeners.push(investUnsub);
+
+            // Activity listener
+            const activityUnsub = db.collection('activities')
+                .orderBy('timestamp', 'desc')
+                .limit(10)
+                .onSnapshot(snapshot => {
+                    updateActivityList(snapshot);
+                });
+            realtimeListeners.push(activityUnsub);
+        }
+
+        // Load Dashboard Stats
+        async function loadDashboardStats() {
+            // Initial load handled by listeners
+        }
+
+        // Update Activity List
+        function updateActivityList(snapshot) {
+            const container = document.getElementById('activity-list');
+            
+            if (snapshot.empty) {
+                container.innerHTML = `
+                    <div class="glass-card p-4 text-center text-gray-500">
+                        <i class="fas fa-inbox text-3xl mb-2"></i>
+                        <p>No recent activity</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            snapshot.forEach(doc => {
+                const activity = doc.data();
+                const time = activity.timestamp ? new Date(activity.timestamp.toDate()).toLocaleTimeString() : 'Just now';
+                
+                html += `
+                    <div class="glass-card p-4 flex items-center gap-3 btn-animate">
+                        <div class="w-10 h-10 rounded-full ${getActivityColor(activity.type)} flex items-center justify-center flex-shrink-0">
+                            <i class="fas ${getActivityIcon(activity.type)} text-white"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-sm truncate">${activity.title}</p>
+                            <p class="text-xs text-gray-500 truncate">${activity.description}</p>
+                        </div>
+                        <span class="text-xs text-gray-600">${time}</span>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function getActivityColor(type) {
+            const colors = {
+                'user': 'bg-blue-500',
+                'payment': 'bg-green-500',
+                'investment': 'bg-yellow-500',
+                'system': 'bg-purple-500',
+                'error': 'bg-red-500'
+            };
+            return colors[type] || 'bg-gray-500';
+        }
+
+        function getActivityIcon(type) {
+            const icons = {
+                'user': 'fa-user',
+                'payment': 'fa-money-bill',
+                'investment': 'fa-briefcase',
+                'system': 'fa-cog',
+                'error': 'fa-exclamation'
+            };
+            return icons[type] || 'fa-info';
+        }
+
+        // Navigation
+        function showSection(section, event) {
+            if (event) createRipple(event);
+            
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            // Show selected
+            document.getElementById(`sec-${section}`).classList.add('active');
+            
+            // Update nav
+            const navItems = document.querySelectorAll('.nav-item');
+            const index = ['home', 'database', 'payments', 'website'].indexOf(section);
+            if (index !== -1) navItems[index].classList.add('active');
+            
+            // Update title
+            const titles = {
+                'home': 'Dashboard',
+                'database': 'Database Manager',
+                'payments': 'Payment Center',
+                'website': 'Website Editor'
+            };
+            document.getElementById('page-title').textContent = titles[section];
+            
+            // Load section data
+            if (section === 'database') loadDatabaseSection();
+            if (section === 'payments') loadPayments('pending');
+        }
+
+        // Database Functions
+        function openDatabaseModal(e) {
+            if (e) createRipple(e);
+            document.getElementById('modal-database').classList.add('active');
+            loadDbCounts();
+        }
+
+        function openDatabase(e) {
+            openDatabaseModal(e);
+        }
+
+        async function loadDbCounts() {
+            // Handled by realtime listeners
+        }
+
+        async function loadDbSection(section) {
+            const detailView = document.getElementById('db-detail-view');
+            detailView.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-green-400"></i></div>';
+            
+            let html = `<h3 class="font-bold text-lg mb-4 capitalize">${section}</h3><div class="space-y-3">`;
+            
+            if (section === 'users') {
+                const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
+                snapshot.forEach(doc => {
+                    const u = doc.data();
+                    html += createUserCard(doc.id, u);
+                });
+            } else if (section === 'payments') {
+                const snapshot = await db.collection('transactions').orderBy('createdAt', 'desc').limit(50).get();
+                snapshot.forEach(doc => {
+                    const t = doc.data();
+                    html += createPaymentCard(doc.id, t);
+                });
+            } else if (section === 'investments') {
+                const snapshot = await db.collection('plans').orderBy('createdAt', 'desc').get();
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    html += createInvestmentCard(doc.id, p);
+                });
+            } else if (section === 'crypto') {
+                const doc = await db.collection('admin').doc('website').get();
+                const data = doc.data() || {};
+                html += createCryptoManager(data);
+            }
+            
+            html += '</div>';
+            detailView.innerHTML = html;
+        }
+
+        function createUserCard(id, u) {
+            return `
+                <div class="glass-card p-4 flex items-center gap-3 btn-animate" onclick="editUser('${id}')">
+                    <img src="${u.pfp || 'https://i.pravatar.cc/150?u=' + id}" class="w-12 h-12 rounded-full border-2 ${u.role === 'admin' ? 'border-purple-400' : 'border-blue-400'}">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold truncate">${u.name || 'Unknown'}</p>
+                        <p class="text-xs text-gray-500 truncate">${u.phone || 'No phone'}</p>
+                        <div class="flex gap-2 mt-1">
+                            <span class="text-xs bg-green-400/20 text-green-400 px-2 py-1 rounded">₹${(u.balance || 0).toLocaleString()}</span>
+                            <span class="text-xs bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded">₹${(u.totalInvested || 0).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 rounded text-xs font-bold ${getRoleColor(u.role)}">${u.role || 'user'}</span>
+                </div>
+            `;
+        }
+
+        function createPaymentCard(id, t) {
+            const isDeposit = t.type === 'deposit';
+            return `
+                <div class="glass-card p-4 btn-animate">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full ${isDeposit ? 'bg-green-400/20' : 'bg-red-400/20'} flex items-center justify-center">
+                                <i class="fas fa-arrow-${isDeposit ? 'down' : 'up'} ${isDeposit ? 'text-green-400' : 'text-red-400'}"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold">₹${t.amount?.toLocaleString() || 0}</p>
+                                <p class="text-xs text-gray-500">${t.userName || 'Unknown'}</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(t.status)}">${t.status}</span>
+                    </div>
+                    ${t.status === 'pending' ? `
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="approvePayment('${id}', event)" class="flex-1 bg-green-400 text-black font-bold py-2 rounded-lg text-sm btn-animate">
+                                <i class="fas fa-check mr-2"></i>Approve
+                            </button>
+                            <button onclick="rejectPayment('${id}', event)" class="flex-1 bg-red-500 text-white font-bold py-2 rounded-lg text-sm btn-animate">
+                                <i class="fas fa-times mr-2"></i>Reject
+                            </button>
+                        </div>
+                    ` : `
+                        <p class="text-xs text-gray-500 mt-2">Processed: ${t.processedAt ? new Date(t.processedAt.toDate()).toLocaleString() : 'N/A'}</p>
+                    `}
+                </div>
+            `;
+        }
+
+        function createInvestmentCard(id, p) {
+            return `
+                <div class="glass-card p-4 btn-animate relative">
+                    ${p.image ? `<img src="${p.image}" class="w-full h-32 object-cover rounded-lg mb-3">` : ''}
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-lg">${p.name}</h4>
+                            <p class="text-green-400 font-bold">₹${p.min?.toLocaleString()} - ₹${p.max?.toLocaleString()}</p>
+                        </div>
+                        <button onclick="deleteInvestment('${id}', event)" class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center btn-animate">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-2">${p.return}% return • ${p.duration} days • ${p.type}</p>
+                    <p class="text-xs text-gray-500 line-clamp-2">${p.description || ''}</p>
+                </div>
+            `;
+        }
+
+        function createCryptoManager(data) {
+            return `
+                <div class="glass-card p-4 space-y-4">
+                    <h4 class="font-bold text-purple-400 mb-3">Cryptocurrency Addresses</h4>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase">Bitcoin (BTC)</label>
+                        <input type="text" id="crypto-btc" value="${data.btc || ''}" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm font-mono mt-1" placeholder="BTC Address">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase">Ethereum (ETH)</label>
+                        <input type="text" id="crypto-eth" value="${data.eth || ''}" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm font-mono mt-1" placeholder="ETH Address">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase">USDT (TRC20)</label>
+                        <input type="text" id="crypto-usdt" value="${data.usdt || ''}" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm font-mono mt-1" placeholder="USDT Address">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase">TRON (TRX)</label>
+                        <input type="text" id="crypto-trx" value="${data.trx || ''}" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm font-mono mt-1" placeholder="TRX Address">
+                    </div>
+                    
+                    <h4 class="font-bold text-green-400 mb-3 mt-6">UPI Settings</h4>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase">UPI ID</label>
+                        <input type="text" id="crypto-upi" value="${data.upi || ''}" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm mt-1" placeholder="upi@bank">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase">UPI QR Code URL</label>
+                        <input type="text" id="crypto-upi-qr" value="${data.upiQr || ''}" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm mt-1" placeholder="https://...">
+                    </div>
+                    
+                    <button onclick="saveCryptoSettings(event)" class="w-full bg-purple-500 text-white font-bold py-3 rounded-xl btn-animate mt-4">
+                        <i class="fas fa-save mr-2"></i>Save All Settings
+                    </button>
+                </div>
+            `;
+        }
+
+        // Payments Functions
+        async function loadPayments(filter) {
+            const container = document.getElementById('payments-list');
+            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-green-400"></i></div>';
+            
+            let query = db.collection('transactions').orderBy('createdAt', 'desc');
+            
+            if (filter === 'pending') {
+                query = query.where('status', '==', 'pending');
+            }
+            
+            const snapshot = await query.limit(50).get();
+            
+            if (snapshot.empty) {
+                container.innerHTML = `
+                    <div class="glass-card p-8 text-center text-gray-500">
+                        <i class="fas fa-inbox text-4xl mb-4"></i>
+                        <p>No ${filter} payments found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            snapshot.forEach(doc => {
+                const t = doc.data();
+                html += createPaymentCard(doc.id, t);
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function filterPayments(filter, e) {
+            if (e) createRipple(e);
+            
+            document.querySelectorAll('.pay-filter').forEach(b => {
+                b.classList.remove('active', 'bg-orange-500', 'text-black');
+                b.classList.add('bg-gray-800', 'text-white');
+            });
+            e.target.closest('.pay-filter').classList.add('active', 'bg-orange-500', 'text-black');
+            e.target.closest('.pay-filter').classList.remove('bg-gray-800', 'text-white');
+            
+            loadPayments(filter);
+        }
+
+        function filterPaymentType(type, e) {
+            if (e) createRipple(e);
+            
+            document.querySelectorAll('.type-filter').forEach(b => {
+                b.classList.remove('active', 'bg-green-400', 'text-black');
+                b.classList.add('bg-gray-800', 'text-white');
+            });
+            e.target.classList.add('active', 'bg-green-400', 'text-black');
+            e.target.classList.remove('bg-gray-800', 'text-white');
+        }
+
+        async function approvePayment(id, e) {
+            if (e) {
+                e.stopPropagation();
+                createRipple(e);
+            }
+            
+            await db.collection('transactions').doc(id).update({
+                status: 'approved',
+                processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                processedBy: currentAdmin
+            });
+            
+            logActivity('payment', 'Payment Approved', `Transaction ${id} approved`);
+            showToast('Payment Approved Successfully');
+            
+            // Move to history logic handled by query
+        }
+
+        async function rejectPayment(id, e) {
+            if (e) {
+                e.stopPropagation();
+                createRipple(e);
+            }
+            
+            await db.collection('transactions').doc(id).update({
+                status: 'rejected',
+                processedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                processedBy: currentAdmin
+            });
+            
+            logActivity('payment', 'Payment Rejected', `Transaction ${id} rejected`);
+            showToast('Payment Rejected');
+        }
+
+        // Investment Functions
+        function openInvestmentModal(e) {
+            if (e) createRipple(e);
+            document.getElementById('modal-investment').classList.add('active');
+        }
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('inv-preview').src = e.target.result;
+                    document.getElementById('inv-preview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function launchInvestment(e) {
+            if (e) createRipple(e);
+            
+            const file = document.getElementById('inv-image').files[0];
+            let imageUrl = '';
+            
+            if (file) {
+                const storageRef = storage.ref(`investments/${Date.now()}_${file.name}`);
+                await storageRef.put(file);
+                imageUrl = await storageRef.getDownloadURL();
+            }
+            
+            const planData = {
+                name: document.getElementById('inv-name').value,
+                min: Number(document.getElementById('inv-min').value),
+                max: Number(document.getElementById('inv-max').value),
+                return: Number(document.getElementById('inv-return').value),
+                duration: Number(document.getElementById('inv-duration').value),
+                type: document.getElementById('inv-type').value,
+                description: document.getElementById('inv-desc').value,
+                image: imageUrl,
+                active: true,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                createdBy: currentAdmin
+            };
+            
+            await db.collection('plans').add(planData);
+            
+            logActivity('investment', 'New Plan Launched', planData.name);
+            showToast('Investment Plan Launched!');
+            closeModal('investment');
+            
+            // Reset form
+            document.querySelectorAll('#modal-investment input, #modal-investment textarea').forEach(i => i.value = '');
+            document.getElementById('inv-preview').classList.add('hidden');
+        }
+
+        async function deleteInvestment(id, e) {
+            if (e) e.stopPropagation();
+            
+            if (!confirm('Delete this investment plan?')) return;
+            
+            const doc = await db.collection('plans').doc(id).get();
+            lastDeletedDoc = { id, data: doc.data() };
+            lastDeletedCollection = 'plans';
+            
+            await db.collection('plans').doc(id).delete();
+            
+            showUndoToast('Investment plan deleted');
+            logActivity('system', 'Plan Deleted', `ID: ${id}`);
+        }
+
+        // User Functions
+        async function editUser(id) {
+            const doc = await db.collection('users').doc(id).get();
+            const u = doc.data();
+            
+            currentEditId = id;
+            document.getElementById('edit-user-img').src = u.pfp || 'https://i.pravatar.cc/150?u=' + id;
+            document.getElementById('edit-user-name').textContent = u.name || 'Unknown';
+            document.getElementById('edit-user-phone').textContent = u.phone || '';
+            document.getElementById('edit-balance').value = u.balance || 0;
+            document.getElementById('edit-invested').value = u.totalInvested || 0;
+            document.getElementById('edit-upi').value = u.upi || '';
+            document.getElementById('edit-crypto').value = u.crypto || '';
+            document.getElementById('edit-role').value = u.role || 'user';
+            
+            document.getElementById('modal-user').classList.add('active');
+        }
+
+        async function saveUserEdit(e) {
+            if (e) createRipple(e);
+            
+            const updates = {
+                balance: Number(document.getElementById('edit-balance').value),
+                totalInvested: Number(document.getElementById('edit-invested').value),
+                upi: document.getElementById('edit-upi').value,
+                crypto: document.getElementById('edit-crypto').value,
+                role: document.getElementById('edit-role').value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedBy: currentAdmin
+            };
+            
+            await db.collection('users').doc(currentEditId).update(updates);
+            
+            logActivity('user', 'User Updated', `ID: ${currentEditId}`);
+            showToast('User Updated Successfully');
+            closeModal('user');
+        }
+
+        async function deleteUser(e) {
+            if (e) createRipple(e);
+            
+            if (!confirm('Are you sure? This will delete the user permanently!')) return;
+            
+            const doc = await db.collection('users').doc(currentEditId).get();
+            lastDeletedDoc = { id: currentEditId, data: doc.data() };
+            lastDeletedCollection = 'users';
+            
+            await db.collection('users').doc(currentEditId).delete();
+            
+            showUndoToast('User deleted');
+            closeModal('user');
+            logActivity('user', 'User Deleted', `ID: ${currentEditId}`);
+        }
+
+        // Undo System
+        function showUndoToast(message) {
+            const toast = document.getElementById('undo-toast');
+            document.getElementById('undo-message').textContent = message;
+            toast.classList.add('show');
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                lastDeletedDoc = null;
+            }, 5000);
+        }
+
+        async function undoAction() {
+            if (!lastDeletedDoc) return;
+            
+            await db.collection(lastDeletedCollection).doc(lastDeletedDoc.id).set(lastDeletedDoc.data);
+            
+            document.getElementById('undo-toast').classList.remove('show');
+            showToast('Action undone successfully');
+            lastDeletedDoc = null;
+        }
+
+        // Crypto Settings
+        async function saveCryptoSettings(e) {
+            if (e) createRipple(e);
+            
+            const settings = {
+                btc: document.getElementById('crypto-btc').value,
+                eth: document.getElementById('crypto-eth').value,
+                usdt: document.getElementById('crypto-usdt').value,
+                trx: document.getElementById('crypto-trx').value,
+                upi: document.getElementById('crypto-upi').value,
+                upiQr: document.getElementById('crypto-upi-qr').value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            await db.collection('admin').doc('website').set(settings, { merge: true });
+            
+            logActivity('system', 'Crypto Settings Updated', 'Admin updated payment addresses');
+            showToast('Settings Saved');
+        }
+
+        // Website Editor
+        function openWebsiteEditor(e) {
+            if (e) createRipple(e);
+            showSection('website', e);
+            loadWebsitePreview();
+        }
+
+        async function loadWebsitePreview() {
+            const doc = await db.collection('admin').doc('website').get();
+            const data = doc.data() || {};
+            
+            // Generate website preview HTML
+            const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 0; 
+                            padding: 20px; 
+                            background: ${data.primaryColor || '#00ff88'}20;
+                        }
+                        .header { 
+                            background: ${data.primaryColor || '#00ff88'}; 
+                            color: #000; 
+                            padding: 20px; 
+                            border-radius: 12px; 
+                            margin-bottom: 20px;
+                        }
+                        .card { 
+                            background: white; 
+                            padding: 20px; 
+                            border-radius: 12px; 
+                            margin-bottom: 15px;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        }
+                        .btn { 
+                            background: ${data.secondaryColor || '#ffd700'}; 
+                            color: #000; 
+                            padding: 12px 24px; 
+                            border-radius: 8px; 
+                            display: inline-block;
+                            font-weight: bold;
+                        }
+                        h1 { margin: 0; }
+                        .editable:hover { outline: 2px dashed #00ff88; cursor: text; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header editable" data-field="heroTitle">
+                        <h1>${data.heroTitle || 'Welcome to Investment Platform'}</h1>
+                        <p class="editable" data-field="heroSubtitle">${data.heroSubtitle || 'Best returns on your investment'}</p>
+                    </div>
+                    
+                    <div class="card editable" data-field="aboutText">
+                        <h3>About Us</h3>
+                        <p>${data.aboutText || 'We provide the best investment opportunities with guaranteed returns.'}</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Contact</h3>
+                        <p>UPI: <span class="editable" data-field="upi">${data.upi || 'upi@bank'}</span></p>
+                        <p>BTC: <span class="editable" data-field="btc">${data.btc || 'btc-address'}</span></p>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <div class="btn editable" data-field="ctaText">${data.ctaText || 'Invest Now'}</div>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            const frame = document.getElementById('site-frame');
+            frame.srcdoc = html;
+            
+            // Setup long press editing after load
+            frame.onload = function() {
+                setupEditableElements(frame);
+            };
+        }
+
+        function setupEditableElements(frame) {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            const editables = doc.querySelectorAll('.editable');
+            
+            editables.forEach(el => {
+                let pressTimer;
+                
+                el.addEventListener('touchstart', function(e) {
+                    pressTimer = setTimeout(() => {
+                        enableEditing(el);
+                    }, 800);
+                });
+                
+                el.addEventListener('touchend', function() {
+                    clearTimeout(pressTimer);
+                });
+                
+                el.addEventListener('mousedown', function(e) {
+                    if (e.button === 0) {
+                        pressTimer = setTimeout(() => {
+                            enableEditing(el);
+                        }, 800);
+                    }
+                });
+                
+                el.addEventListener('mouseup', function() {
+                    clearTimeout(pressTimer);
+                });
+            });
+        }
+
+        function enableEditing(element) {
+            if (!editMode) return;
+            
+            element.contentEditable = true;
+            element.focus();
+            element.style.outline = '2px solid #00ff88';
+            
+            element.addEventListener('blur', function() {
+                element.contentEditable = false;
+                element.style.outline = 'none';
+                saveFieldEdit(element.dataset.field, element.innerText);
+            }, { once: true });
+        }
+
+        function toggleEditMode(e) {
+            if (e) createRipple(e);
+            editMode = !editMode;
+            
+            const btn = document.getElementById('edit-mode-btn');
+            const preview = document.getElementById('website-preview');
+            
+            if (editMode) {
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>Done';
+                btn.classList.remove('bg-green-400', 'text-black');
+                btn.classList.add('bg-blue-500', 'text-white');
+                preview.classList.add('editing');
+                showToast('Long press any element to edit');
+            } else {
+                btn.innerHTML = '<i class="fas fa-edit mr-2"></i>Edit';
+                btn.classList.add('bg-green-400', 'text-black');
+                btn.classList.remove('bg-blue-500', 'text-white');
+                preview.classList.remove('editing');
+            }
+        }
+
+        async function saveFieldEdit(field, value) {
+            const update = {};
+            update[field] = value;
+            await db.collection('admin').doc('website').update(update);
+            showToast(`${field} updated`);
+        }
+
+        async function saveWebsiteChanges(e) {
+            if (e) createRipple(e);
+            showToast('All changes saved to database');
+        }
+
+        // Utility Functions
+        function closeModal(id) {
+            document.getElementById(`modal-${id}`).classList.remove('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+            
+            msg.textContent = message;
+            icon.className = type === 'error' ? 'fas fa-exclamation-circle text-red-400' : 'fas fa-check-circle text-green-400';
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        function getRoleColor(role) {
+            const colors = {
+                'admin': 'bg-purple-400 text-black',
+                'vip': 'bg-yellow-400 text-black',
+                'blocked': 'bg-red-400 text-white',
+                'user': 'bg-blue-400 text-black'
+            };
+            return colors[role] || 'bg-gray-400 text-black';
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'pending': 'bg-orange-400 text-black',
+                'approved': 'bg-green-400 text-black',
+                'rejected': 'bg-red-400 text-white',
+                'completed': 'bg-blue-400 text-black'
+            };
+            return colors[status] || 'bg-gray-400 text-black';
+        }
+
+        async function logActivity(type, title, description) {
+            await db.collection('activities').add({
+                type,
+                title,
+                description,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                admin: currentAdmin
+            });
+        }
+
+        function showNotifications(e) {
+            if (e) createRipple(e);
+            showToast('3 pending approvals');
+        }
+
+        // Close modals on outside click
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+  </html>
