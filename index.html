@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultra Admin - Mobile Panel</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background: #000000;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            padding-bottom: 80px;
+        }
+
+        /* Mobile Optimizations */
+        .mobile-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* Glass Cards - Simplified for Mobile */
+        .glass-card {
+            background: linear-gradient(145deg, #111111 0%, #0a0a0a 100%);
+            border: 1px solid #222;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid #222;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            flex: 1;
+        }
+
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .nav-item.active {
+            color: #00ff88;
+        }
+
+        .nav-item.active i {
+            transform: translateY(-2px);
+        }
+
+        /* Top Header */
+        .top-header {
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid #222;
+            padding: 16px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .btn-primary {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+        }
+
+        .btn-danger {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-gold {
+            background: #ffd700;
+            color: #000;
+        }
+
+        /* Grid for Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 24px;
+        }
+
+        /* Lists */
+        .data-list {
+            space-y: 12px;
+        }
+
+        .list-item {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .list-item:active {
+            background: #1a1a1a;
+        }
+
+        /* Forms */
+        .input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .input:focus {
+            border-color: #00ff88;
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal-content {
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        /* Section Display */
+        .section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            width: 50px;
+            height: 28px;
+            background: #333;
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle.active {
+            background: #00ff88;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.3s;
+        }
+
+        .toggle.active::after {
+            left: 24px;
+        }
+
+        /* Badges */
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4444;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 800;
+        }
+
+        /* Scrollable horizontal */
+        .horizontal-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 4px;
+            margin-bottom: 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .horizontal-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .chip.active {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+
+        /* Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111;
+            border: 1px solid #333;
+            border-left: 4px solid #00ff88;
+            padding: 16px 24px;
+            border-radius: 12px;
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            max-width: 90%;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        /* Database Sub-buttons */
+        .db-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .db-btn {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .db-btn:active {
+            transform: scale(0.98);
+            border-color: #00ff88;
+        }
+
+        .db-btn i {
+            font-size: 28px;
+            margin-bottom: 8px;
+            display: block;
+            color: #00ff88;
+        }
+
+        .db-btn span {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Hide scrollbar */
+        ::-webkit-scrollbar { width: 0; height: 0; }
+    </style>
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: #000;">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-400 to-yellow-400 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-crown text-3xl text-black"></i>
+                </div>
+                <h1 class="text-2xl font-black mb-1">ULTRA <span class="text-green-400">ADMIN</span></h1>
+                <p class="text-gray-500 text-sm">Mobile Control Center</p>
+            </div>
+
+            <div class="space-y-4">
+                <input type="text" id="admin-id" class="input" placeholder="Admin ID" value="SQL1234">
+                <input type="password" id="admin-pass" class="input" placeholder="Password" value="SQL1234">
+                
+                <button onclick="adminLogin()" class="btn btn-primary" style="margin-top: 20px;">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        
+        <!-- Header -->
+        <header class="top-header">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-yellow-400 flex items-center justify-center">
+                    <i class="fas fa-crown text-black"></i>
+                </div>
+                <div>
+                    <h1 class="font-black text-lg" id="page-title">Dashboard</h1>
+                    <p class="text-xs text-gray-500" id="last-updated">Just now</p>
+                </div>
+            </div>
+            <button onclick="showNotifications()" class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center relative">
+                <i class="fas fa-bell text-gray-400"></i>
+                <span class="badge" id="notif-badge">3</span>
+            </button>
+        </header>
+
+        <!-- Sections -->
+        <div class="mobile-container">
+            
+            <!-- HOME SECTION -->
+            <section id="sec-home" class="section active">
+                <!-- Quick Stats -->
+                <div class="card-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-green-500/20 text-green-400">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <p class="text-gray-400 text-xs mb-1">Total Users</p>
+                        <h3 class="text-2xl font-black" id="stat-users">0</h3>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-yellow-500/20 text-yellow-400">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <p class="text-gray-400 text-xs mb-1">Balance</p>
+                        <h3 class="text-2xl font-black text-green-400" id="stat-balance">₹0</h3>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-blue-500/20 text-blue-400">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <p class="text-gray-400 text-xs mb-1">Invested</p>
+                        <h3 class="text-2xl font-black text-yellow-400" id="stat-invested">₹0</h3>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-red-500/20 text-red-400">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <p class="text-gray-400 text-xs mb-1">Pending</p>
+                        <h3 class="text-2xl font-black text-red-400" id="stat-pending">0</h3>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <h3 class="font-bold text-lg mb-4">Quick Actions</h3>
+                <div class="glass-card p-4">
+                    <button onclick="openDatabase()" class="btn btn-primary mb-3">
+                        <i class="fas fa-database"></i> Open Database
+                    </button>
+                    <button onclick="launchNewCard()" class="btn btn-gold mb-3">
+                        <i class="fas fa-rocket"></i> Launch New Investment Card
+                    </button>
+                    <button onclick="refreshData()" class="btn btn-secondary">
+                        <i class="fas fa-sync-alt"></i> Refresh Data
+                    </button>
+                </div>
+
+                <!-- Recent Activity -->
+                <h3 class="font-bold text-lg mb-4 mt-6">Recent Activity</h3>
+                <div id="activity-list">
+                    <div class="list-item">
+                        <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                            <i class="fas fa-user-plus text-green-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-sm">New User Registered</p>
+                            <p class="text-xs text-gray-500">Rahul Kumar • 2 min ago</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DATABASE SECTION (Main) -->
+            <section id="sec-database" class="section">
+                <div class="horizontal-scroll">
+                    <div class="chip active" onclick="filterDb('all')">All Data</div>
+                    <div class="chip" onclick="filterDb('users')">Users</div>
+                    <div class="chip" onclick="filterDb('payments')">Payments</div>
+                    <div class="chip" onclick="filterDb('investments')">Investments</div>
+                    <div class="chip" onclick="filterDb('crypto')">Crypto/UPI</div>
+                </div>
+
+                <div id="db-content">
+                    <!-- Dynamic Content -->
+                </div>
+            </section>
+
+            <!-- USERS SECTION -->
+            <section id="sec-users" class="section">
+                <input type="text" id="user-search" class="input" placeholder="Search users..." onkeyup="searchUsers()">
+                
+                <div class="horizontal-scroll mt-4">
+                    <div class="chip active" onclick="filterUsers('all')">All</div>
+                    <div class="chip" onclick="filterUsers('active')">Active</div>
+                    <div class="chip" onclick="filterUsers('vip')">VIP</div>
+                    <div class="chip" onclick="filterUsers('admin')">Admins</div>
+                </div>
+
+                <div id="users-list" class="mt-4">
+                    <!-- Dynamic -->
+                </div>
+            </section>
+
+            <!-- PAYMENTS SECTION -->
+            <section id="sec-payments" class="section">
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button onclick="showPayments('deposits')" class="btn btn-primary">
+                        <i class="fas fa-arrow-down"></i> Deposits
+                    </button>
+                    <button onclick="showPayments('withdrawals')" class="btn btn-danger">
+                        <i class="fas fa-arrow-up"></i> Withdrawals
+                    </button>
+                </div>
+                <div id="payments-list">
+                    <!-- Dynamic -->
+                </div>
+            </section>
+
+            <!-- INVESTMENTS SECTION -->
+            <section id="sec-investments" class="section">
+                <button onclick="openNewInvestmentModal()" class="btn btn-gold mb-4">
+                    <i class="fas fa-plus"></i> Create New Plan
+                </button>
+                <div id="investment-plans">
+                    <!-- Dynamic -->
+                </div>
+            </section>
+
+            <!-- SETTINGS SECTION -->
+            <section id="sec-settings" class="section">
+                <div class="glass-card p-4 mb-4">
+                    <h3 class="font-bold mb-4">Crypto Settings</h3>
+                    <input type="text" id="setting-btc" class="input" placeholder="BTC Address">
+                    <input type="text" id="setting-eth" class="input" placeholder="ETH Address">
+                    <input type="text" id="setting-usdt" class="input" placeholder="USDT Address">
+                    <input type="text" id="setting-upi" class="input" placeholder="UPI ID">
+                    <button onclick="saveCryptoSettings()" class="btn btn-primary">Save Changes</button>
+                </div>
+
+                <div class="glass-card p-4">
+                    <h3 class="font-bold mb-4">System</h3>
+                    <button onclick="adminLogout()" class="btn btn-danger">
+                        <i class="fas fa-power-off"></i> Logout
+                    </button>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="showSection('home')">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" onclick="showSection('database')">
+                <i class="fas fa-database"></i>
+                <span>Database</span>
+            </button>
+            <button class="nav-item" onclick="showSection('users')">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </button>
+            <button class="nav-item" onclick="showSection('payments')">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Payments</span>
+            </button>
+            <button class="nav-item" onclick="showSection('settings')">
+                <i class="fas fa-cog"></i>
+                <span>Menu</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Database Modal -->
+    <div id="modal-database" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-black">Database <span class="text-green-400">Manager</span></h2>
+                <button onclick="closeModal('database')" class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="db-grid">
+                <div class="db-btn" onclick="showDbSection('users')">
+                    <i class="fas fa-users text-blue-400"></i>
+                    <span>All Users</span>
+                    <small class="text-gray-500 block mt-1" id="db-count-users">0 records</small>
+                </div>
+                <div class="db-btn" onclick="showDbSection('payments')">
+                    <i class="fas fa-money-bill-wave text-green-400"></i>
+                    <span>Payments</span>
+                    <small class="text-gray-500 block mt-1" id="db-count-payments">0 records</small>
+                </div>
+                <div class="db-btn" onclick="showDbSection('investments')">
+                    <i class="fas fa-briefcase text-yellow-400"></i>
+                    <span>Investments</span>
+                    <small class="text-gray-500 block mt-1" id="db-count-investments">0 records</small>
+                </div>
+                <div class="db-btn" onclick="showDbSection('crypto')">
+                    <i class="fas fa-coins text-purple-400"></i>
+                    <span>Crypto/UPI</span>
+                    <small class="text-gray-500 block mt-1">Manage</small>
+                </div>
+                <div class="db-btn" onclick="showDbSection('plans')">
+                    <i class="fas fa-layer-group text-red-400"></i>
+                    <span>Plans</span>
+                    <small class="text-gray-500 block mt-1">Edit Plans</small>
+                </div>
+                <div class="db-btn" onclick="showDbSection('logs')">
+                    <i class="fas fa-history text-gray-400"></i>
+                    <span>Logs</span>
+                    <small class="text-gray-500 block mt-1">Activity</small>
+                </div>
+            </div>
+
+            <div id="db-detail-view" class="mt-6 hidden">
+                <!-- Dynamic Detail View -->
+            </div>
+        </div>
+    </div>
+
+    <!-- New Investment Modal -->
+    <div id="modal-investment" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-black">New <span class="text-yellow-400">Investment</span></h2>
+                <button onclick="closeModal('investment')" class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <input type="text" id="inv-name" class="input" placeholder="Plan Name (e.g., Gold Plan)">
+            <input type="number" id="inv-min" class="input" placeholder="Minimum Amount (₹)">
+            <input type="number" id="inv-max" class="input" placeholder="Maximum Amount (₹)">
+            <input type="number" id="inv-return" class="input" placeholder="Return Percentage (%)">
+            <input type="number" id="inv-duration" class="input" placeholder="Duration (Days)">
+            
+            <select id="inv-type" class="input">
+                <option value="daily">Daily Return</option>
+                <option value="monthly">Monthly Return</option>
+                <option value="yearly">Yearly Return</option>
+            </select>
+
+            <button onclick="saveNewInvestment()" class="btn btn-gold mt-4">
+                <i class="fas fa-rocket"></i> Launch Plan
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="modal-user" class="modal">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-black">Edit <span class="text-blue-400">User</span></h2>
+                <button onclick="closeModal('user')" class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="text-center mb-6">
+                <img id="edit-user-img" src="" class="w-24 h-24 rounded-full mx-auto mb-4 border-2 border-green-400">
+                <h3 id="edit-user-name" class="font-bold text-lg"></h3>
+                <p id="edit-user-phone" class="text-gray-500 text-sm"></p>
+            </div>
+
+            <input type="number" id="edit-balance" class="input" placeholder="Balance (₹)">
+            <input type="number" id="edit-invested" class="input" placeholder="Total Invested (₹)">
+            <input type="text" id="edit-upi" class="input" placeholder="UPI ID">
+            <input type="text" id="edit-crypto" class="input" placeholder="Crypto Address">
+            
+            <select id="edit-role" class="input">
+                <option value="user">User</option>
+                <option value="vip">VIP</option>
+                <option value="admin">Admin</option>
+            </select>
+
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveUserEdit()" class="btn btn-primary flex-1">Save</button>
+                <button onclick="deleteUser()" class="btn btn-danger flex-1">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle text-green-400 text-xl"></i>
+        <span id="toast-msg">Success!</span>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvObxADcAior6R_or9O6UmWsFT8do1GkI",
+            authDomain: "sqladmin-ff04d.firebaseapp.com",
+            projectId: "sqladmin-ff04d",
+            storageBucket: "sqladmin-ff04d.firebasestorage.app",
+            messagingSenderId: "539086978850",
+            appId: "1:539086978850:web:261e6a0cf3c9a2aa29ef7b"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // State
+        let currentUser = null;
+        let allUsers = [];
+        let allPayments = [];
+        let currentEditId = null;
+
+        // Login
+        function adminLogin() {
+            const id = document.getElementById('admin-id').value;
+            const pass = document.getElementById('admin-pass').value;
+
+            if (id === 'SQL1234' && pass === 'SQL1234') {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                localStorage.setItem('adminSession', JSON.stringify({id, time: Date.now()}));
+                initApp();
+                showToast('Welcome Admin!');
+            } else {
+                showToast('Invalid Credentials!', 'error');
+            }
+        }
+
+        // Check Session
+        if (localStorage.getItem('adminSession')) {
+            const session = JSON.parse(localStorage.getItem('adminSession'));
+            if (Date.now() - session.time < 24 * 60 * 60 * 1000) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                initApp();
+            }
+        }
+
+        // Initialize
+        function initApp() {
+            loadStats();
+            loadRecentActivity();
+            setupRealtime();
+        }
+
+        // Navigation
+        function showSection(section) {
+            // Hide all
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            // Show selected
+            document.getElementById(`sec-${section}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Update title
+            const titles = {
+                'home': 'Dashboard',
+                'database': 'Database',
+                'users': 'All Users',
+                'payments': 'Payments',
+                'settings': 'Settings'
+            };
+            document.getElementById('page-title').innerText = titles[section] || section;
+            
+            // Load data
+            if (section === 'users') loadUsers();
+            if (section === 'payments') loadPayments();
+            if (section === 'database') loadDatabaseCounts();
+        }
+
+        // Stats
+        async function loadStats() {
+            const usersSnap = await db.collection('users').get();
+            const txSnap = await db.collection('transactions').get();
+            
+            let totalBalance = 0;
+            let totalInvested = 0;
+            let pending = 0;
+
+            usersSnap.forEach(doc => {
+                const data = doc.data();
+                totalBalance += data.balance || 0;
+                totalInvested += data.totalInvested || 0;
+            });
+
+            txSnap.forEach(doc => {
+                if (doc.data().status === 'pending') pending++;
+            });
+
+            document.getElementById('stat-users').innerText = usersSnap.size;
+            document.getElementById('stat-balance').innerText = '₹' + totalBalance.toLocaleString();
+            document.getElementById('stat-invested').innerText = '₹' + totalInvested.toLocaleString();
+            document.getElementById('stat-pending').innerText = pending;
+        }
+
+        // Database Functions
+        function openDatabase() {
+            document.getElementById('modal-database').classList.add('active');
+            loadDatabaseCounts();
+        }
+
+        async function loadDatabaseCounts() {
+            const users = await db.collection('users').get();
+            const payments = await db.collection('transactions').get();
+            const investments = await db.collection('investments').get();
+            
+            document.getElementById('db-count-users').innerText = users.size + ' records';
+            document.getElementById('db-count-payments').innerText = payments.size + ' records';
+            document.getElementById('db-count-investments').innerText = investments.size + ' records';
+        }
+
+        async function showDbSection(type) {
+            const detailView = document.getElementById('db-detail-view');
+            detailView.classList.remove('hidden');
+            
+            let html = `<h3 class="font-bold text-lg mb-4 capitalize">${type} Data</h3><div class="space-y-3">`;
+            
+            if (type === 'users') {
+                const snap = await db.collection('users').limit(50).get();
+                snap.forEach(doc => {
+                    const u = doc.data();
+                    html += `
+                        <div class="list-item" onclick="editUser('${doc.id}')">
+                            <img src="${u.pfp || 'https://i.pravatar.cc/150'}" class="w-12 h-12 rounded-full">
+                            <div class="flex-1">
+                                <p class="font-bold">${u.name || 'Unknown'}</p>
+                                <p class="text-xs text-gray-500">₹${(u.balance || 0).toLocaleString()} • ${u.phone || 'No phone'}</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-600"></i>
+                        </div>
+                    `;
+                });
+            } else if (type === 'payments') {
+                const snap = await db.collection('transactions').orderBy('createdAt', 'desc').limit(50).get();
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    const isDeposit = t.type === 'deposit';
+                    html += `
+                        <div class="list-item">
+                            <div class="w-12 h-12 rounded-xl ${isDeposit ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center">
+                                <i class="fas fa-arrow-${isDeposit ? 'down' : 'up'} ${isDeposit ? 'text-green-400' : 'text-red-400'}"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-bold">₹${t.amount?.toLocaleString() || 0}</p>
+                                <p class="text-xs text-gray-500">${t.userName || 'Unknown'} • ${t.status}</p>
+                            </div>
+                            ${t.status === 'pending' ? `
+                                <button onclick="approvePayment('${doc.id}')" class="px-3 py-1 bg-green-500 text-black rounded-lg text-xs font-bold">Approve</button>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            } else if (type === 'crypto') {
+                const snap = await db.collection('admin').doc('website').get();
+                const data = snap.data() || {};
+                html += `
+                    <div class="glass-card p-4">
+                        <h4 class="font-bold mb-3">Crypto Addresses</h4>
+                        <input type="text" class="input" id="db-btc" value="${data.btc || ''}" placeholder="BTC Address">
+                        <input type="text" class="input" id="db-eth" value="${data.eth || ''}" placeholder="ETH Address">
+                        <input type="text" class="input" id="db-usdt" value="${data.usdt || ''}" placeholder="USDT Address">
+                        <input type="text" class="input" id="db-trx" value="${data.trx || ''}" placeholder="TRX Address">
+                        <h4 class="font-bold mb-3 mt-4">UPI Settings</h4>
+                        <input type="text" class="input" id="db-upi" value="${data.upi || ''}" placeholder="UPI ID">
+                        <input type="text" class="input" id="db-upi-qr" value="${data.upiQr || ''}" placeholder="UPI QR URL">
+                        <button onclick="saveDbCrypto()" class="btn btn-primary mt-4">Save All</button>
+                    </div>
+                `;
+            } else if (type === 'plans') {
+                const snap = await db.collection('plans').get();
+                html += `<button onclick="openNewInvestmentModal()" class="btn btn-gold mb-4"><i class="fas fa-plus"></i> Add New Plan</button>`;
+                snap.forEach(doc => {
+                    const p = doc.data();
+                    html += `
+                        <div class="glass-card p-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-bold text-lg">${p.name}</h4>
+                                    <p class="text-green-400 font-bold">₹${p.min}-${p.max}</p>
+                                    <p class="text-xs text-gray-500">${p.return}% return • ${p.duration} days</p>
+                                </div>
+                                <button onclick="deletePlan('${doc.id}')" class="text-red-400"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
+            detailView.innerHTML = html;
+        }
+
+        // Users
+        async function loadUsers() {
+            const snap = await db.collection('users').get();
+            allUsers = [];
+            let html = '';
+            
+            snap.forEach(doc => {
+                const u = {id: doc.id, ...doc.data()};
+                allUsers.push(u);
+                html += `
+                    <div class="list-item" onclick="openEditUser('${doc.id}')">
+                        <img src="${u.pfp || 'https://i.pravatar.cc/150'}" class="w-12 h-12 rounded-full">
+                        <div class="flex-1">
+                            <p class="font-bold">${u.name || 'Unknown'}</p>
+                            <p class="text-xs text-gray-500">${u.phone || ''}</p>
+                            <p class="text-green-400 font-bold text-sm">₹${(u.balance || 0).toLocaleString()}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded text-xs ${u.role === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-700'}">${u.role || 'user'}</span>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('users-list').innerHTML = html;
+        }
+
+        function searchUsers() {
+            const query = document.getElementById('user-search').value.toLowerCase();
+            const filtered = allUsers.filter(u => 
+                (u.name || '').toLowerCase().includes(query) || 
+                (u.phone || '').includes(query)
+            );
+            renderUsers(filtered);
+        }
+
+        function filterUsers(type) {
+            // Update chips
+            event.target.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (type === 'all') {
+                renderUsers(allUsers);
+            } else {
+                const filtered = allUsers.filter(u => u.role === type || (type === 'active' && u.balance > 0));
+                renderUsers(filtered);
+            }
+        }
+
+        function renderUsers(users) {
+            let html = '';
+            users.forEach(u => {
+                html += `
+                    <div class="list-item" onclick="openEditUser('${u.id}')">
+                        <img src="${u.pfp || 'https://i.pravatar.cc/150'}" class="w-12 h-12 rounded-full">
+                        <div class="flex-1">
+                            <p class="font-bold">${u.name || 'Unknown'}</p>
+                            <p class="text-xs text-gray-500">${u.phone || ''}</p>
+                            <p class="text-green-400 font-bold text-sm">₹${(u.balance || 0).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('users-list').innerHTML = html;
+        }
+
+        function openEditUser(id) {
+            const u = allUsers.find(x => x.id === id);
+            if (!u) return;
+            
+            currentEditId = id;
+            document.getElementById('edit-user-img').src = u.pfp || 'https://i.pravatar.cc/150';
+            document.getElementById('edit-user-name').innerText = u.name || 'Unknown';
+            document.getElementById('edit-user-phone').innerText = u.phone || '';
+            document.getElementById('edit-balance').value = u.balance || 0;
+            document.getElementById('edit-invested').value = u.totalInvested || 0;
+            document.getElementById('edit-upi').value = u.upi || '';
+            document.getElementById('edit-crypto').value = u.crypto || '';
+            document.getElementById('edit-role').value = u.role || 'user';
+            
+            document.getElementById('modal-user').classList.add('active');
+        }
+
+        async function saveUserEdit() {
+            if (!currentEditId) return;
+            
+            await db.collection('users').doc(currentEditId).update({
+                balance: Number(document.getElementById('edit-balance').value),
+                totalInvested: Number(document.getElementById('edit-invested').value),
+                upi: document.getElementById('edit-upi').value,
+                crypto: document.getElementById('edit-crypto').value,
+                role: document.getElementById('edit-role').value
+            });
+            
+            showToast('User Updated!');
+            closeModal('user');
+            loadUsers();
+        }
+
+        async function deleteUser() {
+            if (!confirm('Delete this user?')) return;
+            await db.collection('users').doc(currentEditId).delete();
+            showToast('User Deleted');
+            closeModal('user');
+            loadUsers();
+        }
+
+        // Payments
+        async function loadPayments() {
+            await showPayments('deposits');
+        }
+
+        async function showPayments(type) {
+            const snap = await db.collection('transactions')
+                .where('type', '==', type === 'deposits' ? 'deposit' : 'withdraw')
+                .orderBy('createdAt', 'desc')
+                .get();
+            
+            let html = '';
+            snap.forEach(doc => {
+                const t = doc.data();
+                html += `
+                    <div class="list-item">
+                        <div class="w-12 h-12 rounded-xl ${type === 'deposits' ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center">
+                            <i class="fas fa-arrow-${type === 'deposits' ? 'down' : 'up'} ${type === 'deposits' ? 'text-green-400' : 'text-red-400'}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold">₹${t.amount?.toLocaleString()}</p>
+                            <p class="text-xs text-gray-500">${t.userName || 'Unknown'}</p>
+                            <p class="text-xs text-gray-600">${t.method || 'Unknown'}</p>
+                        </div>
+                        ${t.status === 'pending' ? `
+                            <div class="flex gap-2">
+                                <button onclick="approvePayment('${doc.id}')" class="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 flex items-center justify-center">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="rejectPayment('${doc.id}')" class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        ` : `<span class="text-xs ${t.status === 'approved' ? 'text-green-400' : 'text-red-400'}">${t.status}</span>`}
+                    </div>
+                `;
+            });
+            
+            document.getElementById('payments-list').innerHTML = html || '<p class="text-center text-gray-500 py-8">No transactions</p>';
+        }
+
+        async function approvePayment(id) {
+            await db.collection('transactions').doc(id).update({status: 'approved'});
+            showToast('Payment Approved!');
+            loadPayments();
+            loadStats();
+        }
+
+        async function rejectPayment(id) {
+            await db.collection('transactions').doc(id).update({status: 'rejected'});
+            showToast('Payment Rejected');
+            loadPayments();
+        }
+
+        // Investment Card
+        function launchNewCard() {
+            document.getElementById('modal-investment').classList.add('active');
+        }
+
+        async function saveNewInvestment() {
+            const data = {
+                name: document.getElementById('inv-name').value,
+                min: Number(document.getElementById('inv-min').value),
+                max: Number(document.getElementById('inv-max').value),
+                return: Number(document.getElementById('inv-return').value),
+                duration: Number(document.getElementById('inv-duration').value),
+                type: document.getElementById('inv-type').value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                active: true
+            };
+            
+            await db.collection('plans').add(data);
+            showToast('Investment Plan Launched!');
+            closeModal('investment');
+            
+            // Clear inputs
+            document.querySelectorAll('#modal-investment input').forEach(i => i.value = '');
+        }
+
+        // Crypto Settings
+        async function saveCryptoSettings() {
+            await db.collection('admin').doc('website').update({
+                btc: document.getElementById('setting-btc').value,
+                eth: document.getElementById('setting-eth').value,
+                usdt: document.getElementById('setting-usdt').value,
+                upi: document.getElementById('setting-upi').value
+            });
+            showToast('Settings Saved!');
+        }
+
+        async function saveDbCrypto() {
+            await db.collection('admin').doc('website').update({
+                btc: document.getElementById('db-btc').value,
+                eth: document.getElementById('db-eth').value,
+                usdt: document.getElementById('db-usdt').value,
+                trx: document.getElementById('db-trx').value,
+                upi: document.getElementById('db-upi').value,
+                upiQr: document.getElementById('db-upi-qr').value
+            });
+            showToast('Crypto Settings Updated!');
+        }
+
+        // Utilities
+        function closeModal(id) {
+            document.getElementById(`modal-${id}`).classList.remove('active');
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.querySelector('i').className = type === 'error' ? 'fas fa-exclamation-circle text-red-400' : 'fas fa-check-circle text-green-400';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function refreshData() {
+            loadStats();
+            showToast('Data Refreshed!');
+        }
+
+        function adminLogout() {
+            localStorage.removeItem('adminSession');
+            location.reload();
+        }
+
+        function setupRealtime() {
+            db.collection('transactions').where('status', '==', 'pending').onSnapshot(snap => {
+                document.getElementById('stat-pending').innerText = snap.size;
+                if (snap.size > 0) {
+                    document.getElementById('notif-badge').innerText = snap.size;
+                    document.getElementById('notif-badge').style.display = 'flex';
+                } else {
+                    document.getElementById('notif-badge').style.display = 'none';
+                }
+            });
+        }
+
+        async function loadRecentActivity() {
+            // Real implementation would load from logs
+        }
+
+        function showNotifications() {
+            showToast('3 pending approvals');
+        }
+
+        function openNewInvestmentModal() {
+            document.getElementById('modal-investment').classList.add('active');
+        }
+
+        async function deletePlan(id) {
+            if (!confirm('Delete this plan?')) return;
+            await db.collection('plans').doc(id).delete();
+            showToast('Plan Deleted');
+            showDbSection('plans');
+        }
+
+        // Close modals on outside click
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+                      </html>
